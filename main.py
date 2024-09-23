@@ -153,7 +153,7 @@ def get_dataset(opts):
     return train_dst, val_dst
 
 
-def validate(opts, model, loader, device, metrics, ret_samples_ids=None):
+def validate(opts, model, loader, device, metrics: StreamSegMetrics, ret_samples_ids=None):
     """Do validation and return specified samples"""
     metrics.reset()
     ret_samples = []
