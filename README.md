@@ -1,250 +1,183 @@
-# DeepLabv3Plus-Pytorch
+## Latest updates -- SAM 2: Segment Anything in Images and Videos
 
-Pretrained DeepLabv3, DeepLabv3+ for Pascal VOC & Cityscapes.
+Please check out our new release on [**Segment Anything Model 2 (SAM 2)**](https://github.com/facebookresearch/segment-anything-2).
 
-## Quick Start 
+* SAM 2 code: https://github.com/facebookresearch/segment-anything-2
+* SAM 2 demo: https://sam2.metademolab.com/
+* SAM 2 paper: https://arxiv.org/abs/2408.00714
 
-### 1. Available Architectures
-| DeepLabV3    |  DeepLabV3+        |
-| :---: | :---:     |
-|deeplabv3_resnet50|deeplabv3plus_resnet50|
-|deeplabv3_resnet101|deeplabv3plus_resnet101|
-|deeplabv3_mobilenet|deeplabv3plus_mobilenet ||
-|deeplabv3_hrnetv2_48 | deeplabv3plus_hrnetv2_48 |
-|deeplabv3_hrnetv2_32 | deeplabv3plus_hrnetv2_32 |
-|deeplabv3_xception | deeplabv3plus_xception |
+ ![SAM 2 architecture](https://github.com/facebookresearch/segment-anything-2/blob/main/assets/model_diagram.png?raw=true)
 
-please refer to [network/modeling.py](https://github.com/VainF/DeepLabV3Plus-Pytorch/blob/master/network/modeling.py) for all model entries.
+**Segment Anything Model 2 (SAM 2)** is a foundation model towards solving promptable visual segmentation in images and videos. We extend SAM to video by considering images as a video with a single frame. The model design is a simple transformer architecture with streaming memory for real-time video processing. We build a model-in-the-loop data engine, which improves model and data via user interaction, to collect [**our SA-V dataset**](https://ai.meta.com/datasets/segment-anything-video), the largest video segmentation dataset to date. SAM 2 trained on our data provides strong performance across a wide range of tasks and visual domains.
 
-Download pretrained models: [Dropbox](https://www.dropbox.com/sh/w3z9z8lqpi8b2w7/AAB0vkl4F5vy6HdIhmRCTKHSa?dl=0), [Tencent Weiyun](https://share.weiyun.com/qqx78Pv5)
+# Segment Anything
 
-Note: The HRNet backbone was contributed by @timothylimyl. A pre-trained backbone is available at [google drive](https://drive.google.com/file/d/1NxCK7Zgn5PmeS7W1jYLt5J9E0RRZ2oyF/view?usp=sharing).
+**[Meta AI Research, FAIR](https://ai.facebook.com/research/)**
 
-### 2. Load the pretrained model:
+[Alexander Kirillov](https://alexander-kirillov.github.io/), [Eric Mintun](https://ericmintun.github.io/), [Nikhila Ravi](https://nikhilaravi.com/), [Hanzi Mao](https://hanzimao.me/), Chloe Rolland, Laura Gustafson, [Tete Xiao](https://tetexiao.com), [Spencer Whitehead](https://www.spencerwhitehead.com/), Alex Berg, Wan-Yen Lo, [Piotr Dollar](https://pdollar.github.io/), [Ross Girshick](https://www.rossgirshick.info/)
+
+[[`Paper`](https://ai.facebook.com/research/publications/segment-anything/)] [[`Project`](https://segment-anything.com/)] [[`Demo`](https://segment-anything.com/demo)] [[`Dataset`](https://segment-anything.com/dataset/index.html)] [[`Blog`](https://ai.facebook.com/blog/segment-anything-foundation-model-image-segmentation/)] [[`BibTeX`](#citing-segment-anything)]
+
+![SAM design](assets/model_diagram.png?raw=true)
+
+The **Segment Anything Model (SAM)** produces high quality object masks from input prompts such as points or boxes, and it can be used to generate masks for all objects in an image. It has been trained on a [dataset](https://segment-anything.com/dataset/index.html) of 11 million images and 1.1 billion masks, and has strong zero-shot performance on a variety of segmentation tasks.
+
+<p float="left">
+  <img src="assets/masks1.png?raw=true" width="37.25%" />
+  <img src="assets/masks2.jpg?raw=true" width="61.5%" /> 
+</p>
+
+## Installation
+
+The code requires `python>=3.8`, as well as `pytorch>=1.7` and `torchvision>=0.8`. Please follow the instructions [here](https://pytorch.org/get-started/locally/) to install both PyTorch and TorchVision dependencies. Installing both PyTorch and TorchVision with CUDA support is strongly recommended.
+
+Install Segment Anything:
+
+```
+pip install git+https://github.com/facebookresearch/segment-anything.git
+```
+
+or clone the repository locally and install with
+
+```
+git clone git@github.com:facebookresearch/segment-anything.git
+cd segment-anything; pip install -e .
+```
+
+The following optional dependencies are necessary for mask post-processing, saving masks in COCO format, the example notebooks, and exporting the model in ONNX format. `jupyter` is also required to run the example notebooks.
+
+```
+pip install opencv-python pycocotools matplotlib onnxruntime onnx
+```
+
+## <a name="GettingStarted"></a>Getting Started
+
+First download a [model checkpoint](#model-checkpoints). Then the model can be used in just a few lines to get masks from a given prompt:
+
+```
+from segment_anything import SamPredictor, sam_model_registry
+sam = sam_model_registry["<model_type>"](checkpoint="<path/to/checkpoint>")
+predictor = SamPredictor(sam)
+predictor.set_image(<your_image>)
+masks, _, _ = predictor.predict(<input_prompts>)
+```
+
+or generate masks for an entire image:
+
+```
+from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
+sam = sam_model_registry["<model_type>"](checkpoint="<path/to/checkpoint>")
+mask_generator = SamAutomaticMaskGenerator(sam)
+masks = mask_generator.generate(<your_image>)
+```
+
+Additionally, masks can be generated for images from the command line:
+
+```
+python scripts/amg.py --checkpoint <path/to/checkpoint> --model-type <model_type> --input <image_or_folder> --output <path/to/output>
+```
+
+See the examples notebooks on [using SAM with prompts](/notebooks/predictor_example.ipynb) and [automatically generating masks](/notebooks/automatic_mask_generator_example.ipynb) for more details.
+
+<p float="left">
+  <img src="assets/notebook1.png?raw=true" width="49.1%" />
+  <img src="assets/notebook2.png?raw=true" width="48.9%" />
+</p>
+
+## ONNX Export
+
+SAM's lightweight mask decoder can be exported to ONNX format so that it can be run in any environment that supports ONNX runtime, such as in-browser as showcased in the [demo](https://segment-anything.com/demo). Export the model with
+
+```
+python scripts/export_onnx_model.py --checkpoint <path/to/checkpoint> --model-type <model_type> --output <path/to/output>
+```
+
+See the [example notebook](https://github.com/facebookresearch/segment-anything/blob/main/notebooks/onnx_model_example.ipynb) for details on how to combine image preprocessing via SAM's backbone with mask prediction using the ONNX model. It is recommended to use the latest stable version of PyTorch for ONNX export.
+
+### Web demo
+
+The `demo/` folder has a simple one page React app which shows how to run mask prediction with the exported ONNX model in a web browser with multithreading. Please see [`demo/README.md`](https://github.com/facebookresearch/segment-anything/blob/main/demo/README.md) for more details.
+
+## <a name="Models"></a>Model Checkpoints
+
+Three model versions of the model are available with different backbone sizes. These models can be instantiated by running
+
+```
+from segment_anything import sam_model_registry
+sam = sam_model_registry["<model_type>"](checkpoint="<path/to/checkpoint>")
+```
+
+Click the links below to download the checkpoint for the corresponding model type.
+
+- **`default` or `vit_h`: [ViT-H SAM model.](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth)**
+- `vit_l`: [ViT-L SAM model.](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_l_0b3195.pth)
+- `vit_b`: [ViT-B SAM model.](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth)
+
+## Dataset
+
+See [here](https://ai.facebook.com/datasets/segment-anything/) for an overview of the datastet. The dataset can be downloaded [here](https://ai.facebook.com/datasets/segment-anything-downloads/). By downloading the datasets you agree that you have read and accepted the terms of the SA-1B Dataset Research License.
+
+We save masks per image as a json file. It can be loaded as a dictionary in python in the below format.
+
 ```python
-model = network.modeling.__dict__[MODEL_NAME](num_classes=NUM_CLASSES, output_stride=OUTPUT_SRTIDE)
-model.load_state_dict( torch.load( PATH_TO_PTH )['model_state']  )
-```
-### 3. Visualize segmentation outputs:
-```python
-outputs = model(images)
-preds = outputs.max(1)[1].detach().cpu().numpy()
-colorized_preds = val_dst.decode_target(preds).astype('uint8') # To RGB images, (N, H, W, 3), ranged 0~255, numpy array
-# Do whatever you like here with the colorized segmentation maps
-colorized_preds = Image.fromarray(colorized_preds[0]) # to PIL Image
-```
+{
+    "image"                 : image_info,
+    "annotations"           : [annotation],
+}
 
-### 4. Atrous Separable Convolution
+image_info {
+    "image_id"              : int,              # Image id
+    "width"                 : int,              # Image width
+    "height"                : int,              # Image height
+    "file_name"             : str,              # Image filename
+}
 
-**Note**: All pre-trained models in this repo were trained without atrous separable convolution.
-
-Atrous Separable Convolution is supported in this repo. We provide a simple tool ``network.convert_to_separable_conv`` to convert ``nn.Conv2d`` to ``AtrousSeparableConvolution``. **Please run main.py with '--separable_conv' if it is required**. See 'main.py' and 'network/_deeplab.py' for more details. 
-
-### 5. Prediction
-Single image:
-```bash
-python predict.py --input datasets/data/cityscapes/leftImg8bit/train/bremen/bremen_000000_000019_leftImg8bit.png  --dataset cityscapes --model deeplabv3plus_mobilenet --ckpt checkpoints/best_deeplabv3plus_mobilenet_cityscapes_os16.pth --save_val_results_to test_results
-```
-
-Image folder:
-```bash
-python predict.py --input datasets/data/cityscapes/leftImg8bit/train/bremen  --dataset cityscapes --model deeplabv3plus_mobilenet --ckpt checkpoints/best_deeplabv3plus_mobilenet_cityscapes_os16.pth --save_val_results_to test_results
+annotation {
+    "id"                    : int,              # Annotation id
+    "segmentation"          : dict,             # Mask saved in COCO RLE format.
+    "bbox"                  : [x, y, w, h],     # The box around the mask, in XYWH format
+    "area"                  : int,              # The area in pixels of the mask
+    "predicted_iou"         : float,            # The model's own prediction of the mask's quality
+    "stability_score"       : float,            # A measure of the mask's quality
+    "crop_box"              : [x, y, w, h],     # The crop of the image used to generate the mask, in XYWH format
+    "point_coords"          : [[x, y]],         # The point coordinates input to the model to generate the mask
+}
 ```
 
-### 6. New backbones
+Image ids can be found in sa_images_ids.txt which can be downloaded using the above [link](https://ai.facebook.com/datasets/segment-anything-downloads/) as well.
 
-Please refer to [this commit (Xception)](https://github.com/VainF/DeepLabV3Plus-Pytorch/commit/c4b51e435e32b0deba5fc7c8ff106293df90590d) for more details about how to add new backbones.
-
-### 7. New datasets
-
-You can train deeplab models on your own datasets. Your ``torch.utils.data.Dataset`` should provide a decoding method that transforms your predictions to colorized images, just like the [VOC Dataset](https://github.com/VainF/DeepLabV3Plus-Pytorch/blob/bfe01d5fca5b6bb648e162d522eed1a9a8b324cb/datasets/voc.py#L156):
-```python
-
-class MyDataset(data.Dataset):
-    ...
-    @classmethod
-    def decode_target(cls, mask):
-        """decode semantic mask to RGB image"""
-        return cls.cmap[mask]
-```
-
-
-## Results
-
-### 1. Performance on Pascal VOC2012 Aug (21 classes, 513 x 513)
-
-Training: 513x513 random crop  
-validation: 513x513 center crop
-
-|  Model          | Batch Size  | FLOPs  | train/val OS   |  mIoU        | Dropbox  | Tencent Weiyun  | 
-| :--------        | :-------------: | :----:   | :-----------: | :--------: | :--------: | :----:   |
-| DeepLabV3-MobileNet       | 16      |  6.0G      |   16/16  |  0.701     |    [Download](https://www.dropbox.com/s/uhksxwfcim3nkpo/best_deeplabv3_mobilenet_voc_os16.pth?dl=0)       | [Download](https://share.weiyun.com/A4ubD1DD) |
-| DeepLabV3-ResNet50         | 16      |  51.4G     |  16/16   |  0.769     |    [Download](https://www.dropbox.com/s/3eag5ojccwiexkq/best_deeplabv3_resnet50_voc_os16.pth?dl=0) | [Download](https://share.weiyun.com/33eLjnVL) |
-| DeepLabV3-ResNet101         | 16      |  72.1G     |  16/16   |  0.773     |    [Download](https://www.dropbox.com/s/vtenndnsrnh4068/best_deeplabv3_resnet101_voc_os16.pth?dl=0)       | [Download](https://share.weiyun.com/iCkzATAw)  |
-| DeepLabV3Plus-MobileNet   | 16      |  17.0G      |  16/16   |  0.711    |    [Download](https://www.dropbox.com/s/0idrhwz6opaj7q4/best_deeplabv3plus_mobilenet_voc_os16.pth?dl=0)   | [Download](https://share.weiyun.com/djX6MDwM) |
-| DeepLabV3Plus-ResNet50    | 16      |   62.7G     |  16/16   |  0.772     |    [Download](https://www.dropbox.com/s/dgxyd3jkyz24voa/best_deeplabv3plus_resnet50_voc_os16.pth?dl=0)   | [Download](https://share.weiyun.com/uTM4i2jG) |
-| DeepLabV3Plus-ResNet101     | 16      |  83.4G     |  16/16   |  0.783     |    [Download](https://www.dropbox.com/s/bm3hxe7wmakaqc5/best_deeplabv3plus_resnet101_voc_os16.pth?dl=0)   | [Download](https://share.weiyun.com/UNPZr3dk) |
-
-
-### 2. Performance on Cityscapes (19 classes, 1024 x 2048)
-
-Training: 768x768 random crop  
-validation: 1024x2048
-
-|  Model          | Batch Size  | FLOPs  | train/val OS   |  mIoU        | Dropbox  |  Tencent Weiyun  |
-| :--------        | :-------------: | :----:   | :-----------: | :--------: | :--------: |  :----:   |
-| DeepLabV3Plus-MobileNet   | 16      |  135G      |  16/16   |  0.721  |    [Download](https://www.dropbox.com/s/753ojyvsh3vdjol/best_deeplabv3plus_mobilenet_cityscapes_os16.pth?dl=0) | [Download](https://share.weiyun.com/aSKjdpbL) 
-| DeepLabV3Plus-ResNet101   | 16      |  N/A      |  16/16   |  0.762  |    [Download](https://drive.google.com/file/d/1t7TC8mxQaFECt4jutdq_NMnWxdm6B-Nb/view?usp=sharing) | N/A |
-
-
-#### Segmentation Results on Pascal VOC2012 (DeepLabv3Plus-MobileNet)
-
-<div>
-<img src="samples/1_image.png"   width="20%">
-<img src="samples/1_target.png"  width="20%">
-<img src="samples/1_pred.png"    width="20%">
-<img src="samples/1_overlay.png" width="20%">
-</div>
-
-<div>
-<img src="samples/23_image.png"   width="20%">
-<img src="samples/23_target.png"  width="20%">
-<img src="samples/23_pred.png"    width="20%">
-<img src="samples/23_overlay.png" width="20%">
-</div>
-
-<div>
-<img src="samples/114_image.png"   width="20%">
-<img src="samples/114_target.png"  width="20%">
-<img src="samples/114_pred.png"    width="20%">
-<img src="samples/114_overlay.png" width="20%">
-</div>
-
-#### Segmentation Results on Cityscapes (DeepLabv3Plus-MobileNet)
-
-<div>
-<img src="samples/city_1_target.png"   width="45%">
-<img src="samples/city_1_overlay.png"  width="45%">
-</div>
-
-<div>
-<img src="samples/city_6_target.png"   width="45%">
-<img src="samples/city_6_overlay.png"  width="45%">
-</div>
-
-
-#### Visualization of training
-
-![trainvis](samples/visdom-screenshoot.png)
-
-
-## Pascal VOC
-
-### 1. Requirements
-
-```bash
-pip install -r requirements.txt
-```
-
-### 2. Prepare Datasets
-
-#### 2.1 Standard Pascal VOC
-You can run train.py with "--download" option to download and extract pascal voc dataset. The defaut path is './datasets/data':
+To decode a mask in COCO RLE format into binary:
 
 ```
-/datasets
-    /data
-        /VOCdevkit 
-            /VOC2012 
-                /SegmentationClass
-                /JPEGImages
-                ...
-            ...
-        /VOCtrainval_11-May-2012.tar
-        ...
+from pycocotools import mask as mask_utils
+mask = mask_utils.decode(annotation["segmentation"])
 ```
 
-#### 2.2  Pascal VOC trainaug (Recommended!!)
+See [here](https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/mask.py) for more instructions to manipulate masks stored in RLE format.
 
-See chapter 4 of [2]
+## License
 
-        The original dataset contains 1464 (train), 1449 (val), and 1456 (test) pixel-level annotated images. We augment the dataset by the extra annotations provided by [76], resulting in 10582 (trainaug) training images. The performance is measured in terms of pixel intersection-over-union averaged across the 21 classes (mIOU).
+The model is licensed under the [Apache 2.0 license](LICENSE).
 
-*./datasets/data/train_aug.txt* includes the file names of 10582 trainaug images (val images are excluded). Please to download their labels from [Dropbox](https://www.dropbox.com/s/oeu149j8qtbs1x0/SegmentationClassAug.zip?dl=0) or [Tencent Weiyun](https://share.weiyun.com/5NmJ6Rk). Those labels come from [DrSleep's repo](https://github.com/DrSleep/tensorflow-deeplab-resnet).
+## Contributing
 
-Extract trainaug labels (SegmentationClassAug) to the VOC2012 directory.
+See [contributing](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md).
 
-```
-/datasets
-    /data
-        /VOCdevkit  
-            /VOC2012
-                /SegmentationClass
-                /SegmentationClassAug  # <= the trainaug labels
-                /JPEGImages
-                ...
-            ...
-        /VOCtrainval_11-May-2012.tar
-        ...
-```
+## Contributors
 
-### 3. Training on Pascal VOC2012 Aug
+The Segment Anything project was made possible with the help of many contributors (alphabetical):
 
-#### 3.1 Visualize training (Optional)
+Aaron Adcock, Vaibhav Aggarwal, Morteza Behrooz, Cheng-Yang Fu, Ashley Gabriel, Ahuva Goldstand, Allen Goodman, Sumanth Gurram, Jiabo Hu, Somya Jain, Devansh Kukreja, Robert Kuo, Joshua Lane, Yanghao Li, Lilian Luong, Jitendra Malik, Mallika Malhotra, William Ngan, Omkar Parkhi, Nikhil Raina, Dirk Rowe, Neil Sejoor, Vanessa Stark, Bala Varadarajan, Bram Wasti, Zachary Winstrom
 
-Start visdom sever for visualization. Please remove '--enable_vis' if visualization is not needed. 
+## Citing Segment Anything
 
-```bash
-# Run visdom server on port 28333
-visdom -port 28333
-```
-
-#### 3.2 Training with OS=16
-
-Run main.py with *"--year 2012_aug"* to train your model on Pascal VOC2012 Aug. You can also parallel your training on 4 GPUs with '--gpu_id 0,1,2,3'
-
-**Note: There is no SyncBN in this repo, so training with *multple GPUs and small batch size* may degrades the performance. See [PyTorch-Encoding](https://hangzhang.org/PyTorch-Encoding/tutorials/syncbn.html) for more details about SyncBN**
-
-```bash
-python main.py --model deeplabv3plus_mobilenet --enable_vis --vis_port 28333 --gpu_id 0 --year 2012_aug --crop_val --lr 0.01 --crop_size 513 --batch_size 16 --output_stride 16
-```
-
-#### 3.3 Continue training
-
-Run main.py with '--continue_training' to restore the state_dict of optimizer and scheduler from YOUR_CKPT.
-
-```bash
-python main.py ... --ckpt YOUR_CKPT --continue_training
-```
-
-#### 3.4. Testing
-
-Results will be saved at ./results.
-
-```bash
-python main.py --model deeplabv3plus_mobilenet --enable_vis --vis_port 28333 --gpu_id 0 --year 2012_aug --crop_val --lr 0.01 --crop_size 513 --batch_size 16 --output_stride 16 --ckpt checkpoints/best_deeplabv3plus_mobilenet_voc_os16.pth --test_only --save_val_results
-```
-
-## Cityscapes
-
-### 1. Download cityscapes and extract it to 'datasets/data/cityscapes'
+If you use SAM or SA-1B in your research, please use the following BibTeX entry.
 
 ```
-/datasets
-    /data
-        /cityscapes
-            /gtFine
-            /leftImg8bit
+@article{kirillov2023segany,
+  title={Segment Anything},
+  author={Kirillov, Alexander and Mintun, Eric and Ravi, Nikhila and Mao, Hanzi and Rolland, Chloe and Gustafson, Laura and Xiao, Tete and Whitehead, Spencer and Berg, Alexander C. and Lo, Wan-Yen and Doll{\'a}r, Piotr and Girshick, Ross},
+  journal={arXiv:2304.02643},
+  year={2023}
+}
 ```
-
-### 2. Train your model on Cityscapes
-
-```bash
-python main.py --model deeplabv3plus_mobilenet --dataset cityscapes --enable_vis --vis_port 28333 --gpu_id 0  --lr 0.1  --crop_size 768 --batch_size 16 --output_stride 16 --data_root ./datasets/data/cityscapes 
-```
-
-## Reference
-
-[1] [Rethinking Atrous Convolution for Semantic Image Segmentation](https://arxiv.org/abs/1706.05587)
-
-[2] [Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation](https://arxiv.org/abs/1802.02611)
